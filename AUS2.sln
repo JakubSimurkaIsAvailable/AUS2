@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36518.9
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AUS2", "AUS2\AUS2.csproj", "{E25D29E2-27C3-4F92-A574-CFAB63E32A89}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AUS2GUI", "AUS2GUI\AUS2GUI.csproj", "{62AF051D-3355-4B3C-905B-38045E8A9DB9}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{E25D29E2-27C3-4F92-A574-CFAB63E32A89}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E25D29E2-27C3-4F92-A574-CFAB63E32A89}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E25D29E2-27C3-4F92-A574-CFAB63E32A89}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E25D29E2-27C3-4F92-A574-CFAB63E32A89}.Release|Any CPU.Build.0 = Release|Any CPU
+		{62AF051D-3355-4B3C-905B-38045E8A9DB9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{62AF051D-3355-4B3C-905B-38045E8A9DB9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{62AF051D-3355-4B3C-905B-38045E8A9DB9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{62AF051D-3355-4B3C-905B-38045E8A9DB9}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {3FBAC1F2-7A2C-4E4D-AEA8-B19C902813B6}
+	EndGlobalSection
+EndGlobal
