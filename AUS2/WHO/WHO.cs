@@ -4,12 +4,12 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace AUS2.WHO
 {
     public class WHO
     {
-        //private Krajina Krajina { get; set; } = new Krajina();
         private AVL<Person> Ludia { get; set; } = new AVL<Person>();
         private AVL<PCRTest> VsetkyTesty { get; set; } = new AVL<PCRTest>();
         private AVL<PCRTestByDate> VsetkyPozitivneTestyByDate { get; set; } = new AVL<PCRTestByDate>();
@@ -20,6 +20,7 @@ namespace AUS2.WHO
         private AVL<Pracovisko> VsetkyPracoviska { get; set; } = new AVL<Pracovisko>();
 
         private int pocetLudi = 0;
+        private int pocetTestov = 1;
 
         public WHO()
         {
@@ -28,22 +29,16 @@ namespace AUS2.WHO
         public void VlozKraj(int kodKraju)
         {
             var kraj = new Kraj(kodKraju);
-            //Krajina.Kraje.Insert(kraj);
             VsetkyKraje.Insert(kraj);
         }
         public void VlozOkres(int kodOkresu)
         {
-            //var kraj = Krajina.Kraje.Find(new Kraj(kodKraju));
             var okres = new Okres(kodOkresu);
-            //kraj.Okresy.Insert(okres);
             VsetkyOkresy.Insert(okres);
         }
         public void VlozPracovisko(int kodPracoviska)
         {
-            //var kraj = Krajina.Kraje.Find(new Kraj(kodKraju));
-            //var okres = kraj.Okresy.Find(new Okres(kodOkresu));
             var pracovisko = new Pracovisko(kodPracoviska);
-            //okres.Pracoviska.Insert(pracovisko);
             VsetkyPracoviska.Insert(pracovisko);
         }
         //1 vloz vysledok PCR testu do systemu
@@ -53,7 +48,15 @@ namespace AUS2.WHO
             Okres okres;
             Pracovisko pracovisko;
             Person clovek;
-            pcrTest.SetUnikatnyNahodnyKodPCRTestu(VsetkyTesty.FindMax(null).UnikatnyNahodnyKodPCRTestu + 1);
+            try
+            {
+                pcrTest.SetUnikatnyNahodnyKodPCRTestu(pocetTestov + 1);
+            }
+            catch (InvalidOperationException)
+            {
+                pcrTest.SetUnikatnyNahodnyKodPCRTestu(1);
+            }
+            pocetTestov++;
             try
             {
                 clovek = Ludia.Find(new Person(pcrTest.UnikatneCisloPacienta));
@@ -107,8 +110,6 @@ namespace AUS2.WHO
             }
             
             VsetkyTesty.Insert(pcrTest);
-
-            //VsetkyTesty.Insert(pcrTest);
             clovek.PCRTests.Insert(pcrTest);
             pcrTest.Pacient = clovek;
             clovek.PCRTestsByDate.Insert(new PCRTestByDate(pcrTest));
@@ -167,8 +168,9 @@ namespace AUS2.WHO
             {
                 throw new KeyNotFoundException("Okres nebol najdeny.");
             }
-            
-            result = okres.TrueTestyDatum.FindInterval(new PCRTestByDate(new PCRTest(zaciatok, int.MinValue)), new PCRTestByDate(new PCRTest(koniec, int.MaxValue)));
+            DateTime startOfDay = new DateTime(zaciatok.Year, zaciatok.Month, zaciatok.Day, 0, 0, 0);
+            DateTime endOfDay = new DateTime(koniec.Year, koniec.Month, koniec.Day, 23, 59, 59);
+            result = okres.TrueTestyDatum.FindInterval(new PCRTestByDate(new PCRTest(startOfDay, int.MinValue)), new PCRTestByDate(new PCRTest(endOfDay, int.MaxValue)));
             return result;
         }
 
@@ -185,8 +187,10 @@ namespace AUS2.WHO
             {
                 throw new KeyNotFoundException("Okres nebol najdeny.");
             }
-            List<PCRTestByDate> trueTestyVObdobi = okres.TrueTestyDatum.FindInterval(new PCRTestByDate(new PCRTest(zaciatok, int.MinValue)), new PCRTestByDate(new PCRTest(koniec, int.MaxValue)));
-            List<PCRTestByDate> falseTestyVObdobi = okres.FalseTestyDatum.FindInterval(new PCRTestByDate(new PCRTest(zaciatok, int.MinValue)), new PCRTestByDate(new PCRTest(koniec, int.MaxValue)));
+            DateTime startOfDay = new DateTime(zaciatok.Year, zaciatok.Month, zaciatok.Day, 0, 0, 0);
+            DateTime endOfDay = new DateTime(koniec.Year, koniec.Month, koniec.Day, 23, 59, 59);
+            List<PCRTestByDate> trueTestyVObdobi = okres.TrueTestyDatum.FindInterval(new PCRTestByDate(new PCRTest(startOfDay, int.MinValue)), new PCRTestByDate(new PCRTest(endOfDay, int.MaxValue)));
+            List<PCRTestByDate> falseTestyVObdobi = okres.FalseTestyDatum.FindInterval(new PCRTestByDate(new PCRTest(startOfDay, int.MinValue)), new PCRTestByDate(new PCRTest(endOfDay, int.MaxValue)));
             result.AddRange(trueTestyVObdobi);
             result.AddRange(falseTestyVObdobi);
             return result;
@@ -197,6 +201,8 @@ namespace AUS2.WHO
         {
             List<PCRTestByDate> result = [];
             Kraj kraj;
+            DateTime startOfDay = new DateTime(zaciatok.Year, zaciatok.Month, zaciatok.Day, 0, 0, 0);
+            DateTime endOfDay = new DateTime(koniec.Year, koniec.Month, koniec.Day, 23, 59, 59);
             try
             {
                 kraj = VsetkyKraje.Find(new Kraj(kodKraja));
@@ -205,7 +211,7 @@ namespace AUS2.WHO
             {
                 throw new KeyNotFoundException("Kraj nebol najdeny.");
             }
-            result = kraj.TrueTestyDatum.FindInterval(new PCRTestByDate(new PCRTest(zaciatok, int.MinValue)), new PCRTestByDate(new PCRTest(koniec, int.MaxValue)));
+            result = kraj.TrueTestyDatum.FindInterval(new PCRTestByDate(new PCRTest(startOfDay, int.MinValue)), new PCRTestByDate(new PCRTest(endOfDay, int.MaxValue)));
             return result;
         }
 
@@ -214,6 +220,8 @@ namespace AUS2.WHO
         {
             List<PCRTestByDate> result = [];
             Kraj kraj;
+            DateTime startOfDay = new DateTime(zaciatok.Year, zaciatok.Month, zaciatok.Day, 0, 0, 0);
+            DateTime endOfDay = new DateTime(koniec.Year, koniec.Month, koniec.Day, 23, 59, 59);
             try
             {
                 kraj = VsetkyKraje.Find(new Kraj(kodKraja));
@@ -222,7 +230,7 @@ namespace AUS2.WHO
             {
                 throw new KeyNotFoundException("Kraj nebol najdeny.");
             }
-            List<PCRTestByDate> trueTestyVObdobi = kraj.TrueTestyDatum.FindInterval(new PCRTestByDate(new PCRTest(zaciatok, int.MinValue)), new PCRTestByDate(new PCRTest(koniec, int.MaxValue)));
+            List<PCRTestByDate> trueTestyVObdobi = kraj.TrueTestyDatum.FindInterval(new PCRTestByDate(new PCRTest(startOfDay, int.MinValue)), new PCRTestByDate(new PCRTest(endOfDay, int.MaxValue)));
             return result;
         }
 
@@ -230,7 +238,9 @@ namespace AUS2.WHO
         public List<PCRTestByDate> VypisVsetkychPozitivnychTestovZaObdobie(DateTime zaciatok, DateTime koniec)
         {
             List<PCRTestByDate> result = [];
-            result = VsetkyPozitivneTestyByDate.FindInterval(new PCRTestByDate(new PCRTest(zaciatok, int.MinValue)), new PCRTestByDate(new PCRTest(koniec, int.MaxValue)));
+            DateTime startOfDay = new DateTime(zaciatok.Year, zaciatok.Month, zaciatok.Day, 0, 0, 0);
+            DateTime endOfDay = new DateTime(koniec.Year, koniec.Month, koniec.Day, 23, 59, 59);
+            result = VsetkyPozitivneTestyByDate.FindInterval(new PCRTestByDate(new PCRTest(startOfDay, int.MinValue)), new PCRTestByDate(new PCRTest(endOfDay, int.MaxValue)));
             return result;
         }
 
@@ -238,8 +248,10 @@ namespace AUS2.WHO
         public List<PCRTestByDate> VypisVsetkychTestovZaObdobie(DateTime zaciatok, DateTime koniec)
         {
             List<PCRTestByDate> result = [];
-            result.AddRange(VsetkyPozitivneTestyByDate.FindInterval(new PCRTestByDate(new PCRTest(zaciatok, int.MinValue)), new PCRTestByDate(new PCRTest(koniec, int.MaxValue))));
-            result.AddRange(VsetkyNegativneTestyByDate.FindInterval(new PCRTestByDate(new PCRTest(zaciatok, int.MinValue)), new PCRTestByDate(new PCRTest(koniec, int.MaxValue))));
+            DateTime startOfDay = new DateTime(zaciatok.Year, zaciatok.Month, zaciatok.Day, 0, 0, 0);
+            DateTime endOfDay = new DateTime(koniec.Year, koniec.Month, koniec.Day, 23, 59, 59);
+            result.AddRange(VsetkyPozitivneTestyByDate.FindInterval(new PCRTestByDate(new PCRTest(startOfDay, int.MinValue)), new PCRTestByDate(new PCRTest(endOfDay, int.MaxValue))));
+            result.AddRange(VsetkyNegativneTestyByDate.FindInterval(new PCRTestByDate(new PCRTest(startOfDay, int.MinValue)), new PCRTestByDate(new PCRTest(endOfDay, int.MaxValue))));
             return result;
         }
 
@@ -258,7 +270,8 @@ namespace AUS2.WHO
             {
                 throw new KeyNotFoundException("Okres nebol najdeny.");
             }
-            List<PCRTestByDate> pozitivneTesty = okres.TrueTestyDatum.FindInterval(new PCRTestByDate(new PCRTest(zaciatok, int.MinValue)), new PCRTestByDate(new PCRTest(datum, int.MaxValue)));
+            DateTime endOfDay = new DateTime(datum.Year, datum.Month, datum.Day, 23, 59, 59);
+            List<PCRTestByDate> pozitivneTesty = okres.TrueTestyDatum.FindInterval(new PCRTestByDate(new PCRTest(zaciatok, int.MinValue)), new PCRTestByDate(new PCRTest(endOfDay, int.MaxValue)));
             foreach (PCRTestByDate test in pozitivneTesty)
             {
                 Person clovek = test.Inner.Pacient;
@@ -287,7 +300,8 @@ namespace AUS2.WHO
             {
                 throw new KeyNotFoundException("Okres nebol najdeny.");
             }
-            testy = okres.TrueTestyDatum.FindInterval(new PCRTestByDate(new PCRTest(zaciatok, int.MinValue)), new PCRTestByDate(new PCRTest(datum, int.MaxValue))).Select(t => t.Inner).ToList();
+            DateTime endOfDay = new DateTime(datum.Year, datum.Month, datum.Day, 23, 59, 59);
+            testy = okres.TrueTestyDatum.FindInterval(new PCRTestByDate(new PCRTest(zaciatok, int.MinValue)), new PCRTestByDate(new PCRTest(endOfDay, int.MaxValue))).Select(t => t.Inner).ToList();
             testy = testy.OrderByDescending(t => t.HodnotaTestu).ToList();
             foreach (var test in testy)
             {
@@ -316,7 +330,8 @@ namespace AUS2.WHO
             {
                 throw new KeyNotFoundException("Kraj nebol najdeny.");
             }
-            result = kraj.TrueTestyDatum.FindInterval(new PCRTestByDate(new PCRTest(datum.AddDays(-X), int.MinValue)), new PCRTestByDate(new PCRTest(datum, int.MaxValue)))
+            DateTime endOfDay = new DateTime(datum.Year, datum.Month, datum.Day, 23, 59, 59);
+            result = kraj.TrueTestyDatum.FindInterval(new PCRTestByDate(new PCRTest(datum.AddDays(-X), int.MinValue)), new PCRTestByDate(new PCRTest(endOfDay, int.MaxValue)))
                 .Select(t => t.Inner.Pacient)
                 .ToList();
             foreach (var test in result) {
@@ -333,7 +348,8 @@ namespace AUS2.WHO
         {
             List<Person> result = [];
             DateTime zaciatok = datum.AddDays(-X);
-            result = VsetkyPozitivneTestyByDate.FindInterval(new PCRTestByDate(new PCRTest(zaciatok, int.MinValue)), new PCRTestByDate(new PCRTest(datum, int.MaxValue)))
+            DateTime endOfDay = new DateTime(datum.Year, datum.Month, datum.Day, 23, 59, 59);
+            result = VsetkyPozitivneTestyByDate.FindInterval(new PCRTestByDate(new PCRTest(zaciatok, int.MinValue)), new PCRTestByDate(new PCRTest(endOfDay, int.MaxValue)))
                 .Select(t => t.Inner.Pacient)
                 .ToList();
             foreach (var test in result)
@@ -351,12 +367,13 @@ namespace AUS2.WHO
         {
             var result = new List<PCRTest>();
             var okresy = VsetkyOkresy.FindInterval(VsetkyOkresy.FindMin(null), VsetkyOkresy.FindMax(null));
+            DateTime endOfDay = new DateTime(datum.Year, datum.Month, datum.Day, 23, 59, 59);
             foreach (var okres in okresy)
             {
                 List<PCRTestByDate> testyPodlaDatumu = [];
                 try
                 {
-                    testyPodlaDatumu = okres.TrueTestyDatum.FindInterval(new PCRTestByDate(new PCRTest(datum.AddDays(-x), int.MinValue)), new PCRTestByDate(new PCRTest(datum, int.MaxValue)));
+                    testyPodlaDatumu = okres.TrueTestyDatum.FindInterval(new PCRTestByDate(new PCRTest(datum.AddDays(-x), int.MinValue)), new PCRTestByDate(new PCRTest(endOfDay, int.MaxValue)));
                     result.Add(testyPodlaDatumu.OrderByDescending(t => t.Inner.HodnotaTestu).First().Inner);
                 } catch (InvalidOperationException)
                 {
@@ -373,10 +390,11 @@ namespace AUS2.WHO
             var result = new List<Okres>();
             var pocetChorychList = new List<int>();
             var okreschory = new List<(Okres okres, int pocet)>();
+            DateTime endOfDay = new DateTime(datum.Year, datum.Month, datum.Day, 23, 59, 59);
             var okresy = VsetkyOkresy.FindInterval(VsetkyOkresy.FindMin(null), VsetkyOkresy.FindMax(null));
             foreach (var okres in okresy)
             {
-                var pozitivneTesty = okres.TrueTestyDatum.FindInterval(new PCRTestByDate(new PCRTest(datum.AddDays(-X), int.MinValue)), new PCRTestByDate(new PCRTest(datum, int.MaxValue)));
+                var pozitivneTesty = okres.TrueTestyDatum.FindInterval(new PCRTestByDate(new PCRTest(datum.AddDays(-X), int.MinValue)), new PCRTestByDate(new PCRTest(endOfDay, int.MaxValue)));
                 List<Person> unikatniChori = new();
                 foreach (var test in pozitivneTesty)
                 {
@@ -400,10 +418,11 @@ namespace AUS2.WHO
             var result = new List<Kraj>();
             var pocetChorychList = new List<int>();
             var krajchory = new List<(Kraj kraj, int pocet)>();
+            DateTime endOfDay = new DateTime(datum.Year, datum.Month, datum.Day, 23, 59, 59);
             var kraje = VsetkyKraje.FindInterval(VsetkyKraje.FindMin(null), VsetkyKraje.FindMax(null));
             foreach (var kraj in kraje)
             {
-                var pozitivneTesty = kraj.TrueTestyDatum.FindInterval(new PCRTestByDate(new PCRTest(datum.AddDays(-X), int.MinValue)), new PCRTestByDate(new PCRTest(datum, int.MaxValue)));
+                var pozitivneTesty = kraj.TrueTestyDatum.FindInterval(new PCRTestByDate(new PCRTest(datum.AddDays(-X), int.MinValue)), new PCRTestByDate(new PCRTest(endOfDay, int.MaxValue)));
                 List<Person> unikatniChori = new();
                 foreach (var test in pozitivneTesty)
                 {
@@ -424,6 +443,8 @@ namespace AUS2.WHO
         //17 Vypis vsetkych testov uskutocnenych za zadane casove obdobie na danom pracovisku (definovany kodom pracoviska)
         public List<PCRTestByDate> VypisVsetkychTestovZaObdobiePrePracovisko(int kodPracoviska, DateTime zaciatok, DateTime koniec)
         {
+            DateTime startOfDay = new DateTime(zaciatok.Year, zaciatok.Month, zaciatok.Day, 0, 0, 0);
+            DateTime endOfDay = new DateTime(koniec.Year, koniec.Month, koniec.Day, 23, 59, 59);
             List<PCRTestByDate> result = [];
             Pracovisko pracovisko;
             try
@@ -434,8 +455,8 @@ namespace AUS2.WHO
             {
                 throw new KeyNotFoundException("Pracovisko nebolo najdene.");
             }
-            List<PCRTestByDate> trueTestyVObdobi = pracovisko.TrueTestyDatum.FindInterval(new PCRTestByDate(new PCRTest(zaciatok, int.MinValue)), new PCRTestByDate(new PCRTest(koniec, int.MaxValue)));
-            List<PCRTestByDate> falseTestyVObdobi = pracovisko.FalseTestyDatum.FindInterval(new PCRTestByDate(new PCRTest(zaciatok, int.MinValue)), new PCRTestByDate(new PCRTest(koniec, int.MaxValue)));
+            List<PCRTestByDate> trueTestyVObdobi = pracovisko.TrueTestyDatum.FindInterval(new PCRTestByDate(new PCRTest(startOfDay, int.MinValue)), new PCRTestByDate(new PCRTest(endOfDay, int.MaxValue)));
+            List<PCRTestByDate> falseTestyVObdobi = pracovisko.FalseTestyDatum.FindInterval(new PCRTestByDate(new PCRTest(startOfDay, int.MinValue)), new PCRTestByDate(new PCRTest(endOfDay, int.MaxValue)));
             result.AddRange(trueTestyVObdobi);
             result.AddRange(falseTestyVObdobi);
             return result;
@@ -451,9 +472,9 @@ namespace AUS2.WHO
         //19 Vlozenie osoby do systemu
         public void VlozOsobuDoSystemu(Person person)
         {
-            Ludia.Insert(person);
             pocetLudi++;
             person.SetUnikatneCisloPacienta(person.DatumNarodenia.ToString("yyMMdd") + "/" + pocetLudi.ToString("D4"));
+            Ludia.Insert(person);
         }
 
         //20. Trvale a nenavratne vymazanie vysledku PCR testu (napr pri chybnom vlozeni), test je definovany svojim kodom

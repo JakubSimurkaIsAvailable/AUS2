@@ -11,29 +11,17 @@ static void Main()
     int intervalFinds = 1000000;
     int maxmins = 2000000;
     
-    for (int seed = 5; seed < 6; seed++)
-    {
-        //Console.WriteLine(seed);
-        
-
-        // Activate per-structure tests (each structure runs in isolation and writes ms to console)
-        //tester.RunPerStructureTests(insertions, deletions, finds, intervalFinds, maxmins);
-        //tester.RunFindIntervalSimpleTest();
-        
-    }
     Tester tester = new Tester(1);
     tester.GenerateNumericData();
     Console.WriteLine("Data generated");
     tester.RunPerStructureTests(insertions, deletions, finds, intervalFinds, maxmins);
-    
-    
-    /*
+
     for (int i = 10000; i < 10001; i++)
     {
         tester.RunTestsWithPercentualChance(51, i);
     }
-    */
-    //tester.RunAVLandBSTtestsWithContinuousData(100000);
+
+    tester.RunAVLandBSTtestsWithContinuousData(100000);
 
 
 }

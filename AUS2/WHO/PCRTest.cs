@@ -133,28 +133,7 @@ namespace AUS2.WHO
             return Inner.ToString();
         }
     }
-    /*
-    public class PCRTestByNK : IData
-    {
-        public PCRTest Inner { get; private set; }
-        public PCRTestByNK(PCRTest inner)
-        {
-            Inner = inner;
-        }
-        public int Compare(IData otherData)
-        {
-            return Inner.UnikatnyNahodnyKodPCRTestu.CompareTo(((PCRTestByNK)otherData).Inner.UnikatnyNahodnyKodPCRTestu);
-        }
-        public IData toData(string line)
-        {
-            return Inner.toData(line);
-        }
-        public override string ToString()
-        {
-            return Inner.ToString();
-        }
-    }
-    */
+    
 
     public class PCRTestByVT : IData
     {

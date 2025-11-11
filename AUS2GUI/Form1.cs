@@ -133,6 +133,23 @@ namespace AUS2GUI
         {
         }
 
+        // helper: Form1 only collects input and writes out the string returned by WHOcontroller
+        private void DisplayOutput(string text)
+        {
+            PanelItems.Controls.Clear();
+
+            var rtb = new RichTextBox
+            {
+                Dock = DockStyle.Fill,
+                ReadOnly = true,
+                Font = new Font("Consolas", 10),
+                BackColor = Color.White,
+                Text = text ?? string.Empty
+            };
+
+            PanelItems.Controls.Add(rtb);
+        }
+
         // ----- Action handlers -----
 
         //1 Vloz vysledok PCR testu
@@ -142,15 +159,8 @@ namespace AUS2GUI
             var dr = f.ShowDialog(this);
             if (dr == DialogResult.OK && f.CreatedTest != null)
             {
-                try
-                {
-                    who.VlozVysledokPCRTestu(f.CreatedTest);
-                    MessageBox.Show("PCR test inserted successfully.", "OK", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"Failed to insert PCR test:\r\n{ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
+                var output = who.InsertPcrResultFormatted(f.CreatedTest);
+                DisplayOutput(output);
             }
         }
 
@@ -161,28 +171,9 @@ namespace AUS2GUI
             var dr = f.ShowDialog(this);
             if (dr == DialogResult.OK && f.FoundTest != null && f.FoundPerson != null)
             {
-                ShowTestAndPersonDetails(f.FoundTest, f.FoundPerson);
+                var output = who.FormatTestAndPerson(f.FoundTest, f.FoundPerson);
+                DisplayOutput(output);
             }
-        }
-
-        private void ShowTestAndPersonDetails(PCRTest test, Person person)
-        {
-            PanelItems.Controls.Clear();
-
-            var rtb = new RichTextBox
-            {
-                Dock = DockStyle.Fill,
-                ReadOnly = true,
-                Font = new Font("Consolas", 10),
-                BackColor = Color.White
-            };
-
-            var sb = new StringBuilder();
-            sb.Append(FormatTestDetailed(test));
-            sb.Append(FormatPersonDetailed(person));
-
-            rtb.Text = sb.ToString();
-            PanelItems.Controls.Add(rtb);
         }
 
         //3 Vypis vsetky testy pre pacienta
@@ -193,52 +184,8 @@ namespace AUS2GUI
             if (dr != DialogResult.OK) return;
 
             var ucp = f.UnikatneCisloPacienta;
-            try
-            {
-                var (tests, person) = who.VypisVsetkychTestovPreDanehoPacienta(ucp);
-
-                ShowTestsForPatient(tests, person);
-            }
-            catch (KeyNotFoundException knf)
-            {
-                MessageBox.Show(knf.Message, "Not found", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error while retrieving tests:\r\n{ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-        }
-
-        private void ShowTestsForPatient(System.Collections.Generic.List<PCRTestByDate> tests, Person person)
-        {
-            PanelItems.Controls.Clear();
-
-            var rtb = new RichTextBox
-            {
-                Dock = DockStyle.Fill,
-                ReadOnly = true,
-                Font = new Font("Consolas", 10),
-                BackColor = Color.White
-            };
-
-            var sb = new StringBuilder();
-            sb.AppendLine($"Vsetky testy pre pacienta {person.UnikatneCisloPacienta}, pocet testov: {tests.Count}");
-            sb.Append(FormatPersonDetailed(person));
-
-            if (tests == null || tests.Count == 0)
-            {
-                sb.AppendLine("<no tests>");
-            }
-            else
-            {
-                foreach (var wrapper in tests)
-                {
-                    sb.Append(FormatTestDetailed(wrapper.Inner));
-                }
-            }
-
-            rtb.Text = sb.ToString();
-            PanelItems.Controls.Add(rtb);
+            var output = who.GetAllTestsForPatientFormatted(ucp);
+            DisplayOutput(output);
         }
 
         //4 Pozitivne testy v okrese
@@ -255,80 +202,8 @@ namespace AUS2GUI
             DateTime zac = f.Zaciatok;
             DateTime kon = f.Koniec;
 
-            try
-            {
-                var list = who.VypisPozitivnychTestovZaObdobiePreOkres(kodOkresu, zac, kon);
-                ShowTestList(list, $"Pozitivne testy v okrese {kodOkresu} ({zac:yyyy-MM-dd} — {kon:yyyy-MM-dd}) \nPocet testov: {list.Count}");
-            }
-            catch (KeyNotFoundException knf)
-            {
-                MessageBox.Show(knf.Message, "Not found", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error while retrieving positive tests:\r\n{ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-        }
-        private void ShowTestList(List<PCRTestByDate> list, string title)
-        {
-            PanelItems.Controls.Clear();
-
-            var rtb = new RichTextBox
-            {
-                Dock = DockStyle.Fill,
-                ReadOnly = true,
-                Font = new Font("Consolas", 10),
-                BackColor = Color.White
-            };
-
-            var sb = new StringBuilder();
-            sb.AppendLine(title);
-            sb.AppendLine(new string('=', Math.Min(80, Math.Max(10, title.Length))));
-            sb.AppendLine();
-
-            if (list == null || list.Count == 0)
-            {
-                sb.AppendLine("<no tests>");
-            }
-            else
-            {
-                foreach (var item in list)
-                {
-                    sb.Append(FormatTestDetailed(item.Inner));
-                }
-            }
-
-            rtb.Text = sb.ToString();
-            PanelItems.Controls.Add(rtb);
-        }
-
-        private string FormatTestDetailed(PCRTest test)
-        {
-            var sb = new StringBuilder();
-            sb.AppendLine("=== PCR Test ===");
-            sb.AppendLine($"DatumCas: {test.DatumCas:yyyy-MM-dd HH:mm:ss}");
-            sb.AppendLine($"UnikatneCisloPacienta: {test.UnikatneCisloPacienta}");
-            sb.AppendLine($"UnikatnyNahodnyKodPCRTestu: {test.UnikatnyNahodnyKodPCRTestu}");
-            sb.AppendLine($"KodPracoviska: {test.KodPracoviska}");
-            sb.AppendLine($"KodOkresu: {test.KodOkresu}");
-            sb.AppendLine($"KodKraja: {test.KodKraja}");
-            sb.AppendLine($"VysledokTestu: {test.VysledokTestu}");
-            sb.AppendLine($"HodnotaTestu: {test.HodnotaTestu}");
-            sb.AppendLine($"Poznamka: {test.Poznamka}");
-            sb.AppendLine();
-            return sb.ToString();
-        }
-
-        private string FormatPersonDetailed(Person person)
-        {
-            var sb = new StringBuilder();
-            sb.AppendLine("=== Patient ===");
-            sb.AppendLine($"Meno: {person.Meno}");
-            sb.AppendLine($"Priezvisko: {person.Priezvisko}");
-            sb.AppendLine($"DatumNarodenia: {person.DatumNarodenia:yyyy-MM-dd}");
-            sb.AppendLine($"UnikatneCisloPacienta: {person.UnikatneCisloPacienta}");
-            sb.AppendLine();
-            return sb.ToString();
+            var output = who.GetPositiveTestsInDistrictFormatted(kodOkresu, zac, kon);
+            DisplayOutput(output);
         }
 
         //5 Vsetky testy v okrese
@@ -345,19 +220,8 @@ namespace AUS2GUI
             DateTime zac = f.Zaciatok;
             DateTime kon = f.Koniec;
 
-            try
-            {
-                var list = who.VypisVsetkychTestovZaObdobiePreOkres(kodOkresu, zac, kon);
-                ShowTestList(list, $"Vsetky testy v okrese {kodOkresu} ({zac:yyyy-MM-dd} — {kon:yyyy-MM-dd}) \nPocet testov: {list.Count}");
-            }
-            catch (KeyNotFoundException knf)
-            {
-                MessageBox.Show(knf.Message, "Not found", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error while retrieving tests:\r\n{ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
+            var output = who.GetAllTestsInDistrictFormatted(kodOkresu, zac, kon);
+            DisplayOutput(output);
         }
 
         //6 Pozitivne testy v kraji
@@ -374,19 +238,8 @@ namespace AUS2GUI
             DateTime zac = f.Zaciatok;
             DateTime kon = f.Koniec;
 
-            try
-            {
-                var list = who.VypisVsetkychPozitivnychTestovPreObdobieKraj(kodKraja, zac, kon);
-                ShowTestList(list, $"Pozitivne testy v kraji {kodKraja} ({zac:yyyy-MM-dd} — {kon:yyyy-MM-dd}) \nPocet testov: {list.Count}");
-            }
-            catch (KeyNotFoundException knf)
-            {
-                MessageBox.Show(knf.Message, "Not found", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error while retrieving positive tests:\r\n{ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
+            var output = who.GetPositiveTestsInRegionFormatted(kodKraja, zac, kon);
+            DisplayOutput(output);
         }
 
         //7 Vsetky testy v kraji
@@ -403,25 +256,15 @@ namespace AUS2GUI
             DateTime zac = f.Zaciatok;
             DateTime kon = f.Koniec;
 
-            try
-            {
-                var list = who.VypisVsetkychTestovPreObdobieKraj(kodKraja, zac, kon);
-                ShowTestList(list, $"Vsetky testy v kraji {kodKraja} ({zac:yyyy-MM-dd} — {kon:yyyy-MM-dd}) \nPocet testov: {list.Count}");
-            }
-            catch (KeyNotFoundException knf)
-            {
-                MessageBox.Show(knf.Message, "Not found", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error while retrieving tests:\r\n{ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
+            var output = who.GetAllTestsInRegionFormatted(kodKraja, zac, kon);
+            DisplayOutput(output);
         }
         //8 Vsetky pozitivne testy
         private void AllPositiveTests()
         {
             using var f = new Form5();
             f.PrimaryLabel = "Celkovo";
+            f.RequireCode = false;
 
             var dr = f.ShowDialog(this);
             if (dr != DialogResult.OK) return;
@@ -429,26 +272,15 @@ namespace AUS2GUI
             DateTime zac = f.Zaciatok;
             DateTime kon = f.Koniec;
 
-            try
-            {
-                var list = who.VypisVsetkychPozitivnychTestovZaObdobie(zac, kon);
-                ShowTestList(list, $"Pozitivne testy ({zac:yyyy-MM-dd} — {kon:yyyy-MM-dd}) \nPocet testov: {list.Count}");
-            }
-            catch (KeyNotFoundException knf)
-            {
-                MessageBox.Show(knf.Message, "Not found", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error while retrieving positive tests:\r\n{ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
+            var output = who.GetAllPositiveTestsFormatted(zac, kon);
+            DisplayOutput(output);
         }
         //9 Vsetky testy
         private void AllTests()
         {
-            // Reuse Form5 to ask for date range; set label to indicate context
             using var f = new Form5();
             f.PrimaryLabel = "Celkovo";
+            f.RequireCode = false;
 
             var dr = f.ShowDialog(this);
             if (dr != DialogResult.OK) return;
@@ -456,19 +288,8 @@ namespace AUS2GUI
             DateTime zac = f.Zaciatok;
             DateTime kon = f.Koniec;
 
-            try
-            {
-                var list = who.VypisVsetkychTestovZaObdobie(zac, kon);
-                ShowTestList(list, $"Vsetky testy ({zac:yyyy-MM-dd} — {kon:yyyy-MM-dd}) \nPocet testov: {list.Count}");
-            }
-            catch (KeyNotFoundException knf)
-            {
-                MessageBox.Show(knf.Message, "Not found", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error while retrieving tests:\r\n{ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
+            var output = who.GetAllTestsFormatted(zac, kon);
+            DisplayOutput(output);
         }
         //10 Vypis chorych v okrese od datumu a doby X
         private void ListSickInDistrictFromDateRange()
@@ -484,55 +305,8 @@ namespace AUS2GUI
             DateTime datum = f.Datum;
             int X = f.PocetDni;
 
-            try
-            {
-                var (persons, dates) = who.VypisChorychVOkreseZaObodobieX(kodOkresu, datum, X);
-
-                PanelItems.Controls.Clear();
-                var rtb = new RichTextBox
-                {
-                    Dock = DockStyle.Fill,
-                    ReadOnly = true,
-                    Font = new Font("Consolas", 10),
-                    BackColor = Color.White
-                };
-
-                var sb = new StringBuilder();
-                sb.AppendLine($"Chori v okrese {kodOkresu} k {datum:yyyy-MM-dd} (X = {X} dni) \nPocet chorych: {persons.Count}");
-                sb.AppendLine(new string('=', 80));
-                sb.AppendLine();
-
-                if (persons == null || persons.Count == 0)
-                {
-                    sb.AppendLine("<no persons>");
-                }
-                else
-                {
-                    for (int i = 0; i < persons.Count; i++)
-                    {
-                        var person = persons[i];
-                        sb.Append(FormatPersonDetailed(person));
-
-                        if (dates != null && i < dates.Count)
-                        {
-                            sb.AppendLine($"RelevantDate: {dates[i]:yyyy-MM-dd}");
-                        }
-
-                        sb.AppendLine(new string('-', 60));
-                    }
-                }
-
-                rtb.Text = sb.ToString();
-                PanelItems.Controls.Add(rtb);
-            }
-            catch (KeyNotFoundException knf)
-            {
-                MessageBox.Show(knf.Message, "Not found", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error while retrieving sick persons:\r\n{ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
+            var output = who.ListSickInDistrictFromDateRangeFormatted(kodOkresu, datum, X);
+            DisplayOutput(output);
         }
         //11 Vypis chorych v okrese od datumu a doby X podla vysledku
         private void ListSickInDistrictFromDateRangeByResult()
@@ -548,51 +322,8 @@ namespace AUS2GUI
             DateTime datum = f.Datum;
             int X = f.PocetDni;
 
-            try
-            {
-                var persons = who.VypisChorychVOkresePodlaHodnotyTestuZaObdobieX(kodOkresu, datum, X);
-
-                PanelItems.Controls.Clear();
-                var rtb = new RichTextBox
-                {
-                    Dock = DockStyle.Fill,
-                    ReadOnly = true,
-                    Font = new Font("Consolas", 10),
-                    BackColor = Color.White
-                };
-
-                var sb = new StringBuilder();
-                sb.AppendLine($"Chori v okrese {kodOkresu} k {datum:yyyy-MM-dd} (X = {X} dni) - zoradeni podla hodnoty testu \nPocet chorych: {persons.Item1.Count}");
-                sb.AppendLine(new string('=', 80));
-                sb.AppendLine();
-
-                if (persons.Item1 == null || persons.Item1.Count == 0)
-                {
-                    sb.AppendLine("<no persons>");
-                }
-                else
-                {
-                    for(int i = 0; i < persons.Item1.Count; i++)
-                    {
-                        var person = persons.Item1[i];
-                        var test = persons.Item2[i];
-                        sb.Append(FormatPersonDetailed(person));
-                        sb.Append(FormatTestDetailed(test));
-                        sb.AppendLine(new string('-', 60));
-                    }
-                }
-
-                rtb.Text = sb.ToString();
-                PanelItems.Controls.Add(rtb);
-            }
-            catch (KeyNotFoundException knf)
-            {
-                MessageBox.Show(knf.Message, "Not found", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error while retrieving sick persons:\r\n{ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
+            var output = who.ListSickInDistrictFromDateRangeByResultFormatted(kodOkresu, datum, X);
+            DisplayOutput(output);
         }
         //12 Vypis chorych v kraju od datumu a doby X
         private void ListSickInRegionFromDateRange()
@@ -608,48 +339,8 @@ namespace AUS2GUI
             DateTime datum = f.Datum;
             int X = f.PocetDni;
 
-            try
-            {
-                var persons = who.VypisChorychVKrajiZaObodobieX(kodKraja, datum, X);
-
-                PanelItems.Controls.Clear();
-                var rtb = new RichTextBox
-                {
-                    Dock = DockStyle.Fill,
-                    ReadOnly = true,
-                    Font = new Font("Consolas", 10),
-                    BackColor = Color.White
-                };
-
-                var sb = new StringBuilder();
-                sb.AppendLine($"Chori v kraji {kodKraja} k {datum:yyyy-MM-dd} (X = {X} dni) \nPocet chorych: {persons.Count}");
-                sb.AppendLine(new string('=', 80));
-                sb.AppendLine();
-
-                if (persons == null || persons.Count == 0)
-                {
-                    sb.AppendLine("<no persons>");
-                }
-                else
-                {
-                    foreach (var person in persons)
-                    {
-                        sb.Append(FormatPersonDetailed(person));
-                        sb.AppendLine(new string('-', 60));
-                    }
-                }
-
-                rtb.Text = sb.ToString();
-                PanelItems.Controls.Add(rtb);
-            }
-            catch (KeyNotFoundException knf)
-            {
-                MessageBox.Show(knf.Message, "Not found", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error while retrieving sick persons:\r\n{ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
+            var output = who.ListSickInRegionFromDateRangeFormatted(kodKraja, datum, X);
+            DisplayOutput(output);
         }
         //13 Vypis chorych od datumu a doby X
         private void ListSickFromDateRange()
@@ -665,48 +356,8 @@ namespace AUS2GUI
             DateTime datum = f.Datum;
             int X = f.PocetDni;
 
-            try
-            {
-                var persons = who.VypisChorychZaObodobieX(datum, X);
-
-                PanelItems.Controls.Clear();
-                var rtb = new RichTextBox
-                {
-                    Dock = DockStyle.Fill,
-                    ReadOnly = true,
-                    Font = new Font("Consolas", 10),
-                    BackColor = Color.White
-                };
-
-                var sb = new StringBuilder();
-                sb.AppendLine($"Chori k {datum:yyyy-MM-dd} (X = {X} dni) \nPocet chorych {persons.Count}");
-                sb.AppendLine(new string('=', 80));
-                sb.AppendLine();
-
-                if (persons == null || persons.Count == 0)
-                {
-                    sb.AppendLine("<no persons>");
-                }
-                else
-                {
-                    foreach (var person in persons)
-                    {
-                        sb.Append(FormatPersonDetailed(person));
-                        sb.AppendLine(new string('-', 60));
-                    }
-                }
-
-                rtb.Text = sb.ToString();
-                PanelItems.Controls.Add(rtb);
-            }
-            catch (KeyNotFoundException knf)
-            {
-                MessageBox.Show(knf.Message, "Not found", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error while retrieving sick persons:\r\n{ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
+            var output = who.ListSickFromDateRangeFormatted(datum, X);
+            DisplayOutput(output);
         }
         //14 Vypis jednej chorej osoby okresu s najvyssim vysledkom
         private void SingleSickWithHighestResultInDistrict()
@@ -722,54 +373,8 @@ namespace AUS2GUI
             DateTime datum = f.Datum;
             int X = f.PocetDni;
 
-            try
-            {
-                var tests = who.VypisNajchorsejOsobyOkresu(datum, X);
-
-                PanelItems.Controls.Clear();
-                var rtb = new RichTextBox
-                {
-                    Dock = DockStyle.Fill,
-                    ReadOnly = true,
-                    Font = new Font("Consolas", 10),
-                    BackColor = Color.White
-                };
-
-                var sb = new StringBuilder();
-                sb.AppendLine($"Najhorsie (najvyssia hodnota) osoby z kazdého okresu k {datum:yyyy-MM-dd} (X = {X} dni) \nPocet hodnot: {tests.Count}");
-                sb.AppendLine(new string('=', 80));
-                sb.AppendLine();
-
-                if (tests == null || tests.Count == 0)
-                {
-                    sb.AppendLine("<no results>");
-                }
-                else
-                {
-                    foreach (var test in tests)
-                    {
-                        sb.Append(FormatTestDetailed(test));
-
-                        if (test.Pacient != null)
-                        {
-                            sb.Append(FormatPersonDetailed(test.Pacient));
-                        }
-
-                        sb.AppendLine(new string('-', 60));
-                    }
-                }
-
-                rtb.Text = sb.ToString();
-                PanelItems.Controls.Add(rtb);
-            }
-            catch (KeyNotFoundException knf)
-            {
-                MessageBox.Show(knf.Message, "Not found", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error while retrieving results:\r\n{ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
+            var output = who.SingleSickWithHighestResultInDistrictFormatted(datum, X);
+            DisplayOutput(output);
         }
         //15 Vypis okresov usporiadanych podla poctu pozitivnych testov
         private void DistrictsOrderedByPositiveCount()
@@ -785,50 +390,8 @@ namespace AUS2GUI
             DateTime datum = f.Datum;
             int X = f.PocetDni;
 
-            try
-            {
-                var (okresy, counts) = who.VypisPodlaPoctuChorychPreDatumX(datum, X);
-
-                PanelItems.Controls.Clear();
-                var rtb = new RichTextBox
-                {
-                    Dock = DockStyle.Fill,
-                    ReadOnly = true,
-                    Font = new Font("Consolas", 10),
-                    BackColor = Color.White
-                };
-
-                var sb = new StringBuilder();
-                sb.AppendLine($"Okresy usporiadane podla poctu chorych k {datum:yyyy-MM-dd} (X = {X} dni) \nPocet okresov: {okresy.Count}");
-                sb.AppendLine(new string('=', 80));
-                sb.AppendLine();
-
-                if (okresy == null || okresy.Count == 0)
-                {
-                    sb.AppendLine("<no districts>");
-                }
-                else
-                {
-                    sb.AppendLine("Rank\tKodOkresu\tCount");
-                    for (int i = 0; i < okresy.Count; i++)
-                    {
-                        var kod = okresy[i]?.KodOkresu ?? 0;
-                        var count = (counts != null && i < counts.Count) ? counts[i] : 0;
-                        sb.AppendLine($"{i + 1}\t{kod}\t{count}");
-                    }
-                }
-
-                rtb.Text = sb.ToString();
-                PanelItems.Controls.Add(rtb);
-            }
-            catch (KeyNotFoundException knf)
-            {
-                MessageBox.Show(knf.Message, "Not found", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error while retrieving districts ordered by positive count:\r\n{ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
+            var output = who.DistrictsOrderedByPositiveCountFormatted(datum, X);
+            DisplayOutput(output);
         }
         //16 Vypis krajov usporiadanych podla poctu pozitivnych testov
         private void RegionsOrderedByPositiveCount()
@@ -844,50 +407,8 @@ namespace AUS2GUI
             DateTime datum = f.Datum;
             int X = f.PocetDni;
 
-            try
-            {
-                var (kraje, counts) = who.VypisKrajovPodlaPoctuChorychPreDatumX(datum, X);
-
-                PanelItems.Controls.Clear();
-                var rtb = new RichTextBox
-                {
-                    Dock = DockStyle.Fill,
-                    ReadOnly = true,
-                    Font = new Font("Consolas", 10),
-                    BackColor = Color.White
-                };
-
-                var sb = new StringBuilder();
-                sb.AppendLine($"Kraje usporiadane podľa poctu chorych k {datum:yyyy-MM-dd} (X = {X} dni) \nPocet krajov: {kraje.Count}");
-                sb.AppendLine(new string('=', 80));
-                sb.AppendLine();
-
-                if (kraje == null || kraje.Count == 0)
-                {
-                    sb.AppendLine("<no regions>");
-                }
-                else
-                {
-                    sb.AppendLine("Rank\tKodKraja\tCount");
-                    for (int i = 0; i < kraje.Count; i++)
-                    {
-                        var kod = kraje[i]?.KodKraja ?? 0;
-                        var count = (counts != null && i < counts.Count) ? counts[i] : 0;
-                        sb.AppendLine($"{i + 1}\t{kod}\t{count}");
-                    }
-                }
-
-                rtb.Text = sb.ToString();
-                PanelItems.Controls.Add(rtb);
-            }
-            catch (KeyNotFoundException knf)
-            {
-                MessageBox.Show(knf.Message, "Not found", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error while retrieving regions ordered by positive count:\r\n{ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
+            var output = who.RegionsOrderedByPositiveCountFormatted(datum, X);
+            DisplayOutput(output);
         }
         //17 Testy na pracovisku v obdobi
         private void TestsOnWorkplaceInPeriod()
@@ -903,19 +424,8 @@ namespace AUS2GUI
             DateTime zac = f.Zaciatok;
             DateTime kon = f.Koniec;
 
-            try
-            {
-                var list = who.VypisVsetkychTestovZaObdobiePrePracovisko(kodPracoviska, zac, kon);
-                ShowTestList(list, $"Testy na pracovisku {kodPracoviska} ({zac:yyyy-MM-dd} — {kon:yyyy-MM-dd}) \nPocet testov na pracovisku: {list.Count}");
-            }
-            catch (KeyNotFoundException knf)
-            {
-                MessageBox.Show(knf.Message, "Not found", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error while retrieving tests for workplace:\r\n{ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
+            var output = who.TestsOnWorkplaceInPeriodFormatted(kodPracoviska, zac, kon);
+            DisplayOutput(output);
         }
         //18 Najdi PCR podla kodu
         private void FindPcrByCode()
@@ -929,35 +439,8 @@ namespace AUS2GUI
                 return;
             }
 
-            try
-            {
-                var test = who.VyhladajPCRTestPodlaKodu(code);
-                if (test == null)
-                {
-                    MessageBox.Show($"No PCR test found with code {code}.", "Not found", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    return;
-                }
-
-                // Render result into PanelItems
-                PanelItems.Controls.Clear();
-                var rtb = new RichTextBox
-                {
-                    Dock = DockStyle.Fill,
-                    ReadOnly = true,
-                    Font = new Font("Consolas", 10),
-                    BackColor = Color.White
-                };
-
-                var sb = new StringBuilder();
-                sb.Append(FormatTestDetailed(test));
-                sb.Append(FormatPersonDetailed(test.Pacient));
-                rtb.Text = sb.ToString();
-                PanelItems.Controls.Add(rtb);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error while searching PCR test:\r\n{ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
+            var output = who.FindPcrByCodeFormatted(code);
+            DisplayOutput(output);
         }
         //19 Vloz osobu
         private void InsertPerson()
@@ -1034,16 +517,9 @@ namespace AUS2GUI
                     return;
                 }
 
-                try
-                {
-                    var person = new Person(meno, priezvisko, datum);
-                    who.VlozOsobuDoSystemu(person);
-                    MessageBox.Show("Osoba bola vlozena do systemu.", "Hotovo", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"Vkladanie osoby zlyhalo:\r\n{ex.Message}", "Chyba", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
+                var person = new Person(meno, priezvisko, datum);
+                var output = who.InsertPersonFormatted(person);
+                DisplayOutput(output);
             }
         }
         //20 Vymaz PCR test
@@ -1066,20 +542,8 @@ namespace AUS2GUI
 
             if (confirm != DialogResult.Yes) return;
 
-            try
-            {
-                who.VymazaniePCRTestu(code);
-                MessageBox.Show($"PCR test {code} deleted.", "OK", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                PanelItems.Controls.Clear();
-            }
-            catch (KeyNotFoundException knf)
-            {
-                MessageBox.Show(knf.Message, "Not found", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Failed to delete PCR test:\r\n{ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
+            var output = who.DeletePcrTestFormatted(code);
+            DisplayOutput(output);
         }
         //21 Vymaz osobu
         private void DeletePerson()
@@ -1095,35 +559,26 @@ namespace AUS2GUI
 
             if (confirm != DialogResult.Yes) return;
 
-            try
-            {
-                who.VymazanieOsobyZoSystemu(ucp);
-                MessageBox.Show($"Person '{ucp}' deleted.", "OK", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                PanelItems.Controls.Clear();
-            }
-            catch (KeyNotFoundException knf)
-            {
-                MessageBox.Show(knf.Message, "Not found", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Failed to delete person:\r\n{ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
+            var output = who.DeletePersonFormatted(ucp);
+            DisplayOutput(output);
         }
 
         private void importToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            who.NacitajZoSuboru();
+            var output = who.ImportFromFileFormatted();
+            DisplayOutput(output);
         }
 
         private void exportToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            who.NacitajDoSuboru();
+            var output = who.ExportToFileFormatted();
+            DisplayOutput(output);
         }
 
         private void generateToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            who.Generuj();
+            var output = who.GenerateFormatted();
+            DisplayOutput(output);
         }
     }
 }

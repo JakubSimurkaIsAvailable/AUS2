@@ -16,14 +16,13 @@ namespace AUS2
         protected abstract INode<T> GetNodeFromData(T data);
         public abstract bool Delete(T data);
         public abstract bool Insert(T data);
-        public abstract T? Find(T data); //nema vracat node, treba vracat data alebo null
+        public abstract T? Find(T data); 
         
         public abstract T FindMax(T? node_data);
         public abstract T FindMin(T? node_data);
         public abstract List<T> FindInterval(T min, T max);
     }
-    //nakreslit datovy model struktur podla zadania
-    //intervalove vyhladavanie moze vyhladavat aj linked list
+
     public class BST<T> : Tree<T> where T : IData
     {
         public BST()
@@ -391,18 +390,7 @@ namespace AUS2
 
             
             var current = parent;
-            /*
-            while (current != null)
-            {
-                current.UpdateHeight();
-                var balanced = Rebalance(current);
 
-                if (balanced.GetParent() == null)
-                    Root = balanced;
-
-                current = (AVLNode<T>)balanced.GetParent()!;
-            }
-            */
             current.UpdateHeight();
             bool first = false;
             current = (AVLNode<T>)current.GetParent();

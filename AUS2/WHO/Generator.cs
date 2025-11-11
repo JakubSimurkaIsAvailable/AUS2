@@ -43,7 +43,7 @@ namespace AUS2.WHO
                 }
             }
             int idtestu = 0;
-            for (int i = 0; i < pocetLudi; i++)
+            for (int i = 1; i <= pocetLudi; i++)
             {
                 var meno = mena[rnd.Next(mena.Length)];
                 var priezvisko = priezviska[rnd.Next(priezviska.Length)];
@@ -51,12 +51,9 @@ namespace AUS2.WHO
                 var mesiac = rnd.Next(1, 13);
                 var den = rnd.Next(1, DateTime.DaysInMonth(rok, mesiac) + 1);
                 var datumNarodenia = new DateTime(rok, mesiac, den);
-
-                string ucp = i.ToString();
-
                 var person = new Person(meno, priezvisko, datumNarodenia);
                 WHO.VlozOsobuDoSystemu(person);
-                
+                string ucp = person.UnikatneCisloPacienta;
                 for (int j = 0; j < testovNaOsobu; j++)
                 {
                     int kodPracoviska = pracoviskaList[rnd.Next(pracoviskaList.Count)];
